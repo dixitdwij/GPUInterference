@@ -3,33 +3,16 @@
 #include <cstddef>
 #include <cstdlib>
 #include <hip/hip_runtime.h>
+#include "utils.cpp"
 
 int n = 64;
 int grid = 1;
 int block = 1;
 
-// https://rocm.docs.amd.com/projects/HIP/en/develop/how-to/hip_runtime_api/error_handling.html 
-#define HIP_CHECK(expression)                  \
-{                                              \
-    const hipError_t status = expression;      \
-    if(status != hipSuccess){                  \
-        std::cerr << "HIP error "              \
-                  << status << ": "            \
-                  << hipGetErrorString(status) \
-                  << " at " << __FILE__ << ":" \
-                  << __LINE__ << std::endl;    \
-    }                                          \
-}
-
 __global__ void add_vectors(float *v1, float *v2, float *result, int n){
     int idx = threadIdx.x + blockDim.x * blockIdx.x;
     for(int i = idx; i < n; i += gridDim.x * blockDim.x)
         result[i] = v1[i] + v2[i];
-}
-
-void init_vector(float *v){
-    for(int i = 0; i < n; i++)
-        v[i] = static_cast<float>(i+1);
 }
 
 void print_result(float *v){
@@ -39,36 +22,22 @@ void print_result(float *v){
 }
 
 int main(){
-    float *h_v1, *h_v2, *h_result;
-    float *d_v1, *d_v2, *d_result;
-    
-    h_v1 = (float*)malloc(sizeof(float)*n);
-    h_v2 = (float*)malloc(sizeof(float)*n);
-    h_result = (float*)malloc(sizeof(float)*n);
+    HipVector v1(n, true);
+    HipVector v2(n, true);
+    HipVector result(n, false);
 
-    HIP_CHECK(hipMalloc(&d_v1, sizeof(float)*n));
-    HIP_CHECK(hipMalloc(&d_v2, sizeof(float)*n));
-    HIP_CHECK(hipMalloc(&d_result, sizeof(float)*n));
+    v1.toDevice();
+    v2.toDevice();
 
-    init_vector(h_v1);
-    init_vector(h_v2);
+    HipStream stream;
 
-    HIP_CHECK(hipMemcpy(d_v1, h_v1, n * (sizeof(float)), hipMemcpyHostToDevice));
-    HIP_CHECK(hipMemcpy(d_v2, h_v2, n * (sizeof(float)), hipMemcpyHostToDevice));
+    hipLaunchKernelGGL(add_vectors, grid, block, 0, stream.stream, v1.d_vec, v2.d_vec, result.d_vec, n);
 
-    hipLaunchKernelGGL(add_vectors, grid, block, 0, 0, d_v1, d_v2, d_result, n);
+    stream.synchronize();
 
-    HIP_CHECK(hipDeviceSynchronize());
+    result.toHost();
 
-    HIP_CHECK(hipMemcpy(h_result, d_result, n * sizeof(float), hipMemcpyDeviceToHost));
+    print_result(result.vec);
 
-    print_result(h_result);
-
-    HIP_CHECK(hipFree(d_v1));
-    HIP_CHECK(hipFree(d_v2));
-    HIP_CHECK(hipFree(d_result));
-    
-    free(h_v1);
-    free(h_v2);
-    free(h_result);
+    return 0;
 }

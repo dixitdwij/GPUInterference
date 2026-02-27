@@ -1,0 +1,5 @@
+rocprof_env/*
+workloads/*
+.rocprofv3/*
+*.o
+*.out

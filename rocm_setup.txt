@@ -1,0 +1,27 @@
+For setting up rocprofiler-compute
+
+```
+module load rocm/7.2.0
+python3 -m venv rocprof_env
+
+pip install --upgrade pip # The pip on hacc-boxes is old, so pls do
+source rocprof_env/bin/activate
+# Find the requirements file and install the dependencies
+REQ_FILE="$(dirname $(which rocprof-compute))/../libexec/rocprofiler-compute/requirements.txt"
+pip install -r $REQ_FILE
+
+```
+
+For using the installed rocprofiler-compute:
+```
+module load rocm/7.2.0
+source ./rocprof_env/bin/activate
+```
+
+For attaching rocprof, compile with debug symbols (-g flag on hipcc)
+```
+rocprof-compute profile --name <name> -- ./<binary>
+rocprof-compute analyze -p workloads/vecAddProf/MI210 # On terminal output
+rocprof-compute analyze -p workloads/vecAddProf/MI210 > vecAddProfDump
+rocprof-compute analyze -p workloads/vecAddProf/MI210 --gui
+```
