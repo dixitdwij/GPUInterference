@@ -1,5 +1,46 @@
 # GPUInterference
 
+
+## ROCm Systems Profiler
+
+> The complete installation guide of ROCm Systems Profiler can be found [here](https://rocm.docs.amd.com/projects/rocprofiler-systems/en/docs-6.3.1/install/install.html). 
+
+For setting up ROCm Systems Profiler:
+
+```bash
+# Get the wanted ROCm Systems Profiler version
+wget https://github.com/ROCm/rocprofiler-systems/releases/download/rocm-7.0.2/rocprofiler-systems-1.1.1-ubuntu-20.04-ROCm-60300-PAPI-OMPT-Python3.sh
+#  Make the binary executable
+chmod +x rocprofiler-systems-1.1.1-ubuntu-20.04-ROCm-60300-PAPI-OMPT-Python3.sh
+# Create the folder where you want ROCm System Profiler source code to be
+mkdir rocprofiler-system
+# Execute the binary 
+./rocprofiler-systems-1.1.1-ubuntu-20.04-ROCm-60300-PAPI-OMPT-Python3.sh --prefix=rocprofiler-system --exclude-subdir
+```
+For setting up the environment:
+```bash
+source rocprofiler-system/share/rocprofiler-systems/setup-env.sh
+```
+For testing that the installation succesfully finished:
+```bash
+rocprof-sys-instrument --help
+rocprof-sys-avail --help
+```
+
+> In case some libraries are not found, navigate to ***rocprofiler-system/share/rocprofiler-systems/setup-env.sh*** and set ***ROCM_PATH = /opt/rocm-6.3.3***. 
+
+For instrumenting a file:
+```bash
+rocprof-sys-instrument -M sampling -o multistream.instr -- ./multistream
+```
+
+For running an instrumented file:
+```bash
+rocprof-sys-run -- ./multistream.instr
+```
+
+>Running an instrumented file will generate a folder containing some JSON files and a ***.proto*** file. In order to analyse the data, use [Perfetto Trace Viewer](https://ui.perfetto.dev/).
+
 ## ROCMPROFILER-COMPUTE setup
 
 For setting up rocprofiler-compute
