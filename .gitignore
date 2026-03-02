@@ -3,3 +3,6 @@ workloads/*
 .rocprofv3/*
 *.o
 *.out
+bin/*
+rocprofiler-system
+rocprofiler-systems-*
