@@ -39,6 +39,13 @@ struct HipStream {
         HipErrorCheck(hipStreamCreate(&stream));
     }
 
+    HipStream(uint32_t size, uint32_t cuMask[]) {
+        HipErrorCheck(hipExtStreamCreateWithCUMask(&stream, size, cuMask));
+    }
+
+    HipStream(const HipStream&) = delete;
+    HipStream& operator=(const HipStream&) = delete;
+
     void synchronize() {
         HipErrorCheck(hipStreamSynchronize(stream));
     }
