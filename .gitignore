@@ -6,3 +6,4 @@ workloads/*
 bin/*
 rocprofiler-system
 rocprofiler-systems-*
+ref

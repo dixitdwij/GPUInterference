@@ -9,11 +9,14 @@ int main() {
     // Each uint32_t covers 32 CUs. MI210 has 104 CUs (confirm)
     uint32_t cuMaskSize = 4;
     uint32_t cuMask[4] = {0, 0, 0, 0};
-
     // Only first 4 CUs
     cuMask[0] = 0x0F; 
-    HipStream masked_stream(cuMaskSize, cuMask);
 
+    // hipStream_t masked_stream;
+    
+    // Create the stream using the HIP extension for CU masking
+    // HipErrorCheck(hipExtStreamCreateWithCUMask(&masked_stream, cuMaskSize, cuMask));
+    HipStream masked_stream(cuMaskSize, cuMask);
     std::cout << "Masked stream created." << std::endl;
 
     const int N = 1 << 30;
@@ -27,12 +30,13 @@ int main() {
 
     std::cout << "Launching vecAdd" << std::endl;
 
-    HipStartStop timer;
+    HipStartStop timer(&masked_stream);
     timer.startTiming();
 
     vecAdd<<<numBlocks, blockSize, 0, masked_stream.stream>>>(ha.d_vec, hb.d_vec, hc.d_vec, N);
 
-    timer.stopTiming(&masked_stream); 
+    // HipErrorCheck(hipStreamSynchronize(masked_stream));
+    timer.stopTiming(); 
 
     float milliseconds = timer.elapsedTime();
     
@@ -48,6 +52,9 @@ int main() {
 
     // std::cout << "Result: " << (correct ? "PASS" : "FAIL") << std::endl;
     std::cout << "Execution Time: " << milliseconds << " ms" << std::endl;
+
+    // Cleanup the masked stream
+    // HipErrorCheck(hipStreamDestroy(masked_stream));
 
     return 0;
 }

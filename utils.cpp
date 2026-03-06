@@ -39,12 +39,9 @@ struct HipStream {
         HipErrorCheck(hipStreamCreate(&stream));
     }
 
-    HipStream(uint32_t size, uint32_t cuMask[]) {
-        HipErrorCheck(hipExtStreamCreateWithCUMask(&stream, size, cuMask));
+    HipStream(uint32_t size, uint32_t* mask) {
+        HipErrorCheck(hipExtStreamCreateWithCUMask(&stream, size, mask));
     }
-
-    HipStream(const HipStream&) = delete;
-    HipStream& operator=(const HipStream&) = delete;
 
     void synchronize() {
         HipErrorCheck(hipStreamSynchronize(stream));
@@ -87,8 +84,9 @@ struct HipVector {
 
 struct HipStartStop {
     hipEvent_t start, stop;
+    HipStream* stream;
 
-    HipStartStop() {
+    HipStartStop(HipStream* s = nullptr) : stream(s) {
         HipErrorCheck(hipEventCreate(&start));
         HipErrorCheck(hipEventCreate(&stop));
     }
@@ -99,14 +97,19 @@ struct HipStartStop {
     }
 
     void startTiming() {
-        HipErrorCheck(hipEventRecord(start));
+        if (this->stream) {
+            HipErrorCheck(hipEventRecord(start, this->stream->stream));
+        } else {
+            HipErrorCheck(hipEventRecord(start));
+        }
     }
 
-    void stopTiming(HipStream* stream = nullptr) {
-        HipErrorCheck(hipEventRecord(stop));
-        if (stream) {
-            stream->synchronize();
+    void stopTiming() {
+        if (this->stream) {
+            HipErrorCheck(hipEventRecord(stop, this->stream->stream));
+            this->stream->synchronize();
         } else {
+            HipErrorCheck(hipEventRecord(stop));
             HipErrorCheck(hipEventSynchronize(stop));
         }
     }
