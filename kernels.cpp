@@ -47,6 +47,17 @@ __global__ void copyKernel(
     }
 }
 
+__global__ void copyKernelDbg(float *in, float *out, long long num_floats, long long num_iter) {
+    size_t start_idx = threadIdx.x + blockDim.x * blockIdx.x;
+    size_t step = gridDim.x * blockDim.x;
+
+    for(size_t j = 0; j < num_iter; j++){
+        for(size_t i = start_idx; i < num_floats; i += step){
+            out[i] = in[i];
+        }
+    }
+}
+
 __global__ void copyKernelVectorized(
     float *in,
     float *out,

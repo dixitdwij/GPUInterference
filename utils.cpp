@@ -12,6 +12,8 @@ struct {
         if (err != hipSuccess) {
             __hipLastErrorMsg_ = "HIP Error: " + std::string(hipGetErrorString(err)) + 
                                  " at " + location.file_name() + ":" + std::to_string(location.line());
+            fprintf(stderr, "%s\n", __hipLastErrorMsg_.c_str());
+            abort();
         } else {
             __hipLastErrorMsg_.clear();
         }
