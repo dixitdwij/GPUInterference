@@ -27,7 +27,10 @@ rocprof-sys-instrument --help
 rocprof-sys-avail --help
 ```
 
-> In case some libraries are not found, navigate to ***rocprofiler-system/share/rocprofiler-systems/setup-env.sh*** and set ***ROCM_PATH = /opt/rocm-6.3.3***. 
+> In case some libraries are not found, run the following command in the terminal in order to temporarily set the rocm version to rocm-6.3.3. 
+```bash
+export LD_LIBRARY_PATH=/opt/rocm-6.3.3/lib:$LD_LIBRARY_PATH
+```
 
 For instrumenting a file:
 ```bash
