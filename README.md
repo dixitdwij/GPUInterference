@@ -93,6 +93,11 @@ ARCH="gfx90a"
 export HIP_VISIBLE_DEVICES=0
 ```
 
+#### Compiling for given MI210
+```
+hipcc your_code.cpp -O3 --offload-arch=$ARCH -o your_binary --std=c++20
+```
+
 
 ## Using util.cpp tools
 
