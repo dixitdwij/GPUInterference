@@ -1,7 +1,7 @@
 # GPUInterference
 
 
-## ROCm Systems Profiler
+## ROCm Systems Profiler setup
 
 > The complete installation guide of ROCm Systems Profiler can be found [here](https://rocm.docs.amd.com/projects/rocprofiler-systems/en/docs-6.3.1/install/install.html). 
 
@@ -76,6 +76,23 @@ rocprof-compute analyze -p workloads/vecAddProf/MI210 > vecAddProfDump
 # lanuches a GUI depiction, can be viewed using port forwarding
 rocprof-compute analyze -p workloads/vecAddProf/MI210 --gui
 ```
+
+## GPU details
+We use a MI210 GPU (4 GPUs per node).
+
+#### Obtaining GPU Arch Code (gfx90a)
+```
+$ /opt/rocm/llvm/bin/amdgpu-arch
+gfx90a
+
+ARCH="gfx90a"
+```
+
+#### Isolating execution to a single GPU (here, to the first)
+```
+export HIP_VISIBLE_DEVICES=0
+```
+
 
 ## Using util.cpp tools
 
