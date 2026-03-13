@@ -3,6 +3,7 @@
 #include <hip/hip_runtime.h>
 #include <source_location>
 #include <string>
+#include <miopen/miopen.h>
 
 
 thread_local std::string __hipLastErrorMsg_;
@@ -16,6 +17,15 @@ struct {
             abort();
         } else {
             __hipLastErrorMsg_.clear();
+        }
+        return *this;
+    }
+
+    const auto& operator()(miopenStatus_t err, const std::source_location& location = std::source_location::current()) const {
+        if (err != miopenStatusSuccess) {
+            std::cerr << "MIOpen Error: Code " << err << " at " 
+                      << location.file_name() << ":" << location.line() << std::endl;
+            exit(1);
         }
         return *this;
     }
