@@ -122,3 +122,10 @@ struct HipStartStop {
         return milliseconds;
     }
 };
+
+int getWallClockRate(int deviceId) {
+    int wallClockRate = 0;
+    HipErrorCheck(hipDeviceGetAttribute(&wallClockRate, hipDeviceAttributeWallClockRate, deviceId));
+
+    return wallClockRate;
+}

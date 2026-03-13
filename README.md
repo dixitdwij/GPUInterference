@@ -88,7 +88,7 @@ We use a MI210 GPU (4 GPUs per node).
 $ /opt/rocm/llvm/bin/amdgpu-arch
 gfx90a
 
-ARCH="gfx90a"
+$ ARCH="gfx90a"
 ```
 
 #### Isolating execution to a single GPU (here, to the first)

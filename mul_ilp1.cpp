@@ -41,7 +41,7 @@ __global__ void mul_fp32_ilp1_hip(
 int main() {
     int threads = 256; 
     int blocks = 1; 
-    long long num_itr = 16000000; // 16 million iterations (multiple of 16)
+    long long num_itr = 16000000; // 16 million iterations -> multiple of 16
 
     size_t float_bytes = threads * blocks * sizeof(float);
     size_t block_bytes = blocks * sizeof(unsigned long long);
