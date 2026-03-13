@@ -107,3 +107,49 @@ __global__ void copyKernelStrided(
         }
     }
 }
+
+inline __device__ void addByte(uint *sharedWavefrontHist, uint data){
+    atomicAdd(sharedWavefrontHist + data, 1);
+}
+inline __device__ void addWord(uint *sharedWavefrontHist, uint data){
+    addByte(sharedWavefrontHist, (data >> 0) & 0xFF);
+    addByte(sharedWavefrontHist, (data >> 8) & 0xFF);
+    addByte(sharedWavefrontHist, (data >> 16) & 0xFF);
+    addByte(sharedWavefrontHist, (data >> 24) & 0xFF);
+}
+
+// inline __device__ void addQuad(uint *sharedWavefrontHist, uint data){
+//     addWord(sharedWavefrontHist, (data >> 0) & 0xFFFFFFFF);
+//     addWord(sharedWavefrontHist, (data >> 32) & 0xFFFFFFFF);
+// }
+
+__global__ void noopKernel() {}
+
+__global__ void histogram256Kernel(uint *d_PartialHist, uint *d_Data, uint dataCount){
+    __shared__ uint sharedHist[HISTOGRAM256_THREADBLOCK_MEMORY];
+    uint *sharedWavefrontHist = sharedHist + (threadIdx.x >> LOG2_WF_SIZE) * HISTOGRAM256_BIN_COUNT;
+
+#pragma unroll
+    for(uint i = 0; i < (HISTOGRAM256_THREADBLOCK_MEMORY / HISTOGRAM256_THREADBLOCK_SIZE); i++){
+        sharedHist[threadIdx.x + i * HISTOGRAM256_THREADBLOCK_SIZE] = 0;
+    }
+
+    const uint tag = threadIdx.x << (UINT_BITS - LOG2_WF_SIZE);
+    __syncthreads();
+
+    uint idx = blockIdx.x * blockDim.x + threadIdx.x;
+    uint stride = gridDim.x * blockDim.x;
+    for(uint i = idx; i < dataCount; i += stride){
+        uint data = d_Data[i];
+        addWord(sharedWavefrontHist, data);
+    }
+    __syncthreads();
+
+    for(uint bin = threadIdx.x; bin < HISTOGRAM256_BIN_COUNT; bin += HISTOGRAM256_THREADBLOCK_SIZE){
+        uint sum = 0;
+        for(uint wf = 0; wf < WF_COUNT; wf++){
+            sum += sharedHist[wf * HISTOGRAM256_BIN_COUNT + bin] & TAG_MASK;
+        }
+        d_PartialHist[blockIdx.x * HISTOGRAM256_BIN_COUNT + bin] = sum;
+    }
+}
