@@ -128,3 +128,6 @@ int main() {
 
     return 0;
 }
+
+
+// hipcc conv_kernel.cpp -o bin/conv_kernel -I/opt/rocm-7.2.0/include -L/opt/rocm-7.2.0/lib -lMIOpen --std=c++20

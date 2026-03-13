@@ -4,6 +4,7 @@
 #include <source_location>
 #include <string>
 #include <miopen/miopen.h>
+#include <hipsparse.h>
 
 
 thread_local std::string __hipLastErrorMsg_;
@@ -29,6 +30,15 @@ struct {
         }
         return *this;
     }
+
+    const auto& operator()(hipsparseStatus_t err, const std::source_location& location = std::source_location::current()) const {
+    if (err != HIPSPARSE_STATUS_SUCCESS) {
+        std::cerr << "hipSPARSE Error: Code " << err << " at " 
+                  << location.file_name() << ":" << location.line() << std::endl;
+        exit(1);
+    }
+    return *this;
+}
 
     const auto& operator()(const std::source_location& location = std::source_location::current()) const {
         return (*this)(hipGetLastError(), location);

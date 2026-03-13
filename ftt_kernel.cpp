@@ -91,3 +91,5 @@ int main() {
 
     return 0;
 }
+
+// hipcc ftt_kernel.cpp -o bin/fft_kernel -I/opt/rocm-7.2.0/include -I/opt/rocm-7.2.0/include/hipfft -I/opt/rocm-7.2.0/include/rocfft -L/opt/rocm-7.2.0/lib -lhipfft -lrocfft --std=c++20
