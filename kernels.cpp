@@ -69,7 +69,7 @@ __global__ void copyKernelVectorized(
 ){
     using vec_t = float4;  // float4 groups 4 floats in one structure
     size_t num_vecs = num_floats / 4;
-
+    
     vec_t *in_vec = reinterpret_cast<vec_t*>(in);
     float result = 0;
 
