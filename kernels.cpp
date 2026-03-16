@@ -249,3 +249,45 @@ __global__ void finiteDifferencesKernel(float *output, const float *input, const
         }
     }
 }
+
+__global__ void matrix_multiplication(float *m1, float *m2, float *result, int n){
+    int idx = threadIdx.x + blockDim.x * blockIdx.x; 
+    int idy = threadIdx.y + blockDim.y * blockIdx.y; 
+
+    if((idx < n) && (idy < n)){
+        float c = 0;
+        for(int i = 0; i < n; i++){
+            c += m1[idy * n + i] * m2[n * i + idx];
+        }
+        result[idy * n + idx] = c;
+    }
+}
+
+__global__ void mul_fp32_ilp1_hip(
+    float *a, float *b, float *c, long long num_itr,
+    uint* sm_ids, unsigned long long *start, unsigned long long *end
+){
+    if (threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0) {
+        sm_ids[blockIdx.x] = __smid();
+        start[blockIdx.x] = wall_clock64();
+    }
+    float op1 = a[threadIdx.x];
+    float op3 = 1.0f;
+    long long unrolled_itr = num_itr / 16;
+    for (long long i = 0; i < unrolled_itr; i++) {
+        #pragma unroll 16
+        for (int j = 0; j < 16; j++) {
+            op3 = __fmul_rn(op1, op3);
+        }
+    }
+    c[threadIdx.x] = op3;
+    if (threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0) {
+        end[blockIdx.x] = wall_clock64();
+    }
+}
+
+__global__ void add_vectors(float *v1, float *v2, float *result, int n){
+    int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    for(int i = idx; i < n; i += gridDim.x * blockDim.x)
+        result[i] = v1[i] + v2[i];
+}

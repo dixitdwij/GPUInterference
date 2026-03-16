@@ -5,6 +5,7 @@
 #include <string>
 #include <miopen/miopen.h>
 #include <hipsparse.h>
+#include <hipfft.h>
 
 
 thread_local std::string __hipLastErrorMsg_;
@@ -32,13 +33,31 @@ struct {
     }
 
     const auto& operator()(hipsparseStatus_t err, const std::source_location& location = std::source_location::current()) const {
-    if (err != HIPSPARSE_STATUS_SUCCESS) {
-        std::cerr << "hipSPARSE Error: Code " << err << " at " 
-                  << location.file_name() << ":" << location.line() << std::endl;
-        exit(1);
+        if (err != HIPSPARSE_STATUS_SUCCESS) {
+            std::cerr << "hipSPARSE Error: Code " << err << " at " 
+                    << location.file_name() << ":" << location.line() << std::endl;
+            exit(1);
+        }
+        return *this;
     }
-    return *this;
-}
+
+    const auto& operator()(hipblasStatus_t err, const std::source_location& location = std::source_location::current()) const {
+        if (err != HIPBLAS_STATUS_SUCCESS) {
+            std::cerr << "hipBLAS Error: Code " << err << " at " 
+                      << location.file_name() << ":" << location.line() << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        return *this;
+    }
+
+    const auto& operator()(hipfftResult err, const std::source_location& location = std::source_location::current()) const {
+        if (err != HIPFFT_SUCCESS) {
+            std::cerr << "hipFFT Error: Code " << err << " at " 
+                      << location.file_name() << ":" << location.line() << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        return *this;
+    }
 
     const auto& operator()(const std::source_location& location = std::source_location::current()) const {
         return (*this)(hipGetLastError(), location);
@@ -65,6 +84,10 @@ struct HipStream {
         HipErrorCheck(hipExtStreamCreateWithCUMask(&stream, size, mask));
     }
 
+    hipStream_t get() {
+        return stream;
+    }
+
     void synchronize() {
         HipErrorCheck(hipStreamSynchronize(stream));
     }
@@ -78,6 +101,8 @@ struct HipStream {
 struct HipVector {
     float *vec, *d_vec;
     int size;
+
+    HipVector() : vec(nullptr), d_vec(nullptr), size(0) {}
 
     HipVector(int n, bool init = true) : size(n) {
         vec = new float[n];

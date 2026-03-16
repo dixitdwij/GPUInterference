@@ -4,58 +4,94 @@
 #include <hipblas/hipblas.h>
 #include "utils.cpp"
 
-#define CHECK_HIPBLAS(error) \
-    if (error != HIPBLAS_STATUS_SUCCESS) { \
-        std::cerr << "hipBLAS error code: " << error << " at line " << __LINE__ << std::endl; \
-        exit(EXIT_FAILURE); \
+struct GemmParam {
+    int m, n, k;
+    float alpha, beta;
+
+    HipVector A, B, C;
+    hipblasHandle_t& handle;
+    
+    GemmParam(hipblasHandle_t& handle, int m, int n, int k, float alpha, float beta, bool random_init)
+        : handle(handle), m(m), n(n), k(k), alpha(alpha), beta(beta),
+        A(m*k, random_init), B(k*n, random_init), C(m*n, random_init) {
+        // Assuming that the handle is created and lifetime managed by the caller
+        // The caller to initialise the vectors (lifecycle managed by the struct)
     }
+
+    void toDevice() {
+        A.toDevice();
+        B.toDevice();
+        C.toDevice();
+    }
+
+    void toHost() {
+        C.toHost();
+    }
+
+    inline int lda() const { return m; }
+    inline int ldb() const { return k; }
+    inline int ldc() const { return m; }
+
+    float launch(HipStream* s) {
+        HipStartStop timer(s);
+
+        timer.startTiming();
+
+        HipErrorCheck(hipblasSgemm(this->handle, 
+                            HIPBLAS_OP_N,   
+                            HIPBLAS_OP_N,   // Don't transpose
+                            this->m, this->n, this->k,        
+                            &this->alpha,         
+                            this->A.d_vec, this->lda(),       
+                            this->B.d_vec, this->ldb(),       
+                            &this->beta,         
+                            this->C.d_vec, this->ldc())); 
+        
+        timer.stopTiming();
+        return timer.elapsedTime();
+    }
+};
 
 int main() {
     int m = 3; 
     int k = 4;
     int n = 2;
 
-    // C = alpha * A * B + beta * C
-    float alpha = 1.0f;
-    float beta = 0.0f;
-
-    HipVector A(m * k, false);
-    for (int i = 0; i < A.size; i++) A.vec[i] = 1.0f;
-    HipVector B(k * n, false);
-    for (int i = 0; i < B.size; i++) B.vec[i] = 2.0f;
-    HipVector C(m * n, false);
-    for (int i = 0; i < C.size; i++) C.vec[i] = 0.0f;
-
-    A.toDevice();
-    B.toDevice();
-    C.toDevice();
-
-    // hipBLAS Handle
     hipblasHandle_t handle;
-    CHECK_HIPBLAS(hipblasCreate(&handle));
+    HipErrorCheck(hipblasCreate(&handle));
 
-    int lda = m;
-    int ldb = k;
-    int ldc = m;
+    HipStream stream; 
+    HipErrorCheck(hipblasSetStream(handle, stream.get())); 
 
-    CHECK_HIPBLAS(hipblasSgemm(handle, 
-                               HIPBLAS_OP_N,   
-                               HIPBLAS_OP_N,   // Don't transpose
-                               m, n, k,        
-                               &alpha,         
-                               A.d_vec, lda,       
-                               B.d_vec, ldb,       
-                               &beta,         
-                               C.d_vec, ldc));    
+    GemmParam params(handle, m, n, k, 1.0f, 0.0f, false);
 
-    HipErrorCheck(hipDeviceSynchronize()); if (HipErrorCheck) { std::cerr << HipErrorCheck.what() << std::endl; exit(EXIT_FAILURE); }
+    for (int i = 0; i < params.A.size; i++) params.A.vec[i] = 1.0f;
+    for (int i = 0; i < params.B.size; i++) params.B.vec[i] = 2.0f;
+    for (int i = 0; i < params.C.size; i++) params.C.vec[i] = 0.0f;
 
-    C.toHost();
+    params.toDevice();
 
-    // verify (Expected: 1.0 * 4 * 2.0 = 8.0) TODO: full verify
-    std::cout << "Top-left element of C: " << C.vec[0] << std::endl;
+    int warmup_iters = 5;
+    int profile_iters = 10;
 
-    CHECK_HIPBLAS(hipblasDestroy(handle));
+    std::cout << "Running " << warmup_iters << " warmup iterations..." << std::endl;
+    for (int i = 0; i < warmup_iters; i++) {
+        params.launch(&stream); 
+    }
 
+    std::cout << "Running " << profile_iters << " profiling iterations..." << std::endl;
+    float total_time_ms = 0.0f;
+    
+    for (int i = 0; i < profile_iters; i++) {
+        total_time_ms += params.launch(&stream);
+    }
+
+    std::cout << "Average kernel execution time: " 
+              << (total_time_ms / profile_iters) << " ms" << std::endl;
+
+    params.toHost();
+    std::cout <<  params.C.vec[0] << std::endl;
+
+    HipErrorCheck(hipblasDestroy(handle));
     return 0;
 }

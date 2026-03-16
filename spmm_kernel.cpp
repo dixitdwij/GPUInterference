@@ -4,6 +4,12 @@
 #include <hipsparse.h>
 #include "utils.cpp"
 
+typedef struct {
+    int m, n, k;
+    int nnz_per_row;
+    
+} spmm_spec;
+
 int main() {
     // Heavy Workload Dimensions
     // Matrix A: 65536 x 65536 (Sparse)
