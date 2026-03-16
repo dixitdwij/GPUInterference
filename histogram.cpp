@@ -4,7 +4,47 @@
 #include "kernels.h"
 using namespace std;
 
+struct histogram{
+    uint *d_PartialHistograms, *d_Data;
+    uint dataCount;
+    HipStream stream;
+    uint *h_Data;
 
+    void allocate_memory(){
+        h_Data = (uint *)malloc(dataCount * sizeof(uint));
+        for (uint i = 0; i < dataCount; i++) {
+            h_Data[i] = rand() % 256;
+        }
+        HipErrorCheck(hipMalloc((void **)&d_Data, dataCount * sizeof(uint)));
+        HipErrorCheck(hipMalloc((void **)&d_PartialHistograms, PARTIAL_HISTOGRAM256_COUNT * HISTOGRAM256_BIN_COUNT * sizeof(uint)));
+        HipErrorCheck(hipMemcpy(d_Data, h_Data, dataCount * sizeof(uint), hipMemcpyHostToDevice));
+    };
+
+    void free_memory(){
+        HipErrorCheck(hipFree(d_PartialHistograms));
+        HipErrorCheck(hipFree(d_Data));
+        free(h_Data);
+    };
+
+    void run_kernel(){
+        allocate_memory();
+
+        HipStartStop event(&stream);
+        std::vector<float> times;
+        for(int i = 0; i < 10; i++){
+            float time;
+
+            event.startTiming();
+            histogram256Kernel<<<PARTIAL_HISTOGRAM256_COUNT, HISTOGRAM256_THREADBLOCK_SIZE, 0, stream.stream>>>(d_PartialHistograms, d_Data, dataCount);
+            event.stopTiming();
+            time = event.elapsedTime();
+
+            cout << "Time is " << time << "ms" <<endl;
+            times.push_back(time);
+        }
+        free_memory();
+    };
+};
 
 int main(){
 
@@ -12,38 +52,11 @@ int main(){
     uint *d_PartialHistograms, *d_Data;
     uint dataCount = 40U;
     HipStream stream1;
-
-
-    // allocate memory for the histogram
-    uint* h_Data = (uint *)malloc(dataCount * sizeof(uint));
-    for (uint i = 0; i < dataCount; i++) {
-        h_Data[i] = rand() % 256;
-    }
-
-    HipErrorCheck(hipMalloc((void **)&d_Data, dataCount * sizeof(uint)));
-    HipErrorCheck(hipMalloc((void **)&d_PartialHistograms, PARTIAL_HISTOGRAM256_COUNT * HISTOGRAM256_BIN_COUNT * sizeof(uint)));
-    HipErrorCheck(hipMemcpy(d_Data, h_Data, dataCount * sizeof(uint), hipMemcpyHostToDevice));
+    uint *h_Data;
     
-    HipStartStop event1(&stream1);
+    histogram histo = {d_PartialHistograms, d_Data, dataCount, stream1, h_Data};
 
-    std::vector<float> times;
-
-    for(int i = 0; i < 10; i++){
-        float time1;
-
-        event1.startTiming();
-        histogram256Kernel<<<PARTIAL_HISTOGRAM256_COUNT, HISTOGRAM256_THREADBLOCK_SIZE, 0, stream1.stream>>>(d_PartialHistograms, d_Data, dataCount);
-        event1.stopTiming();
-        time1 = event1.elapsedTime();
-        cout << "Time is " << time1 << "ms" <<endl;
-
-        if (i >= 1){
-            times.push_back(time1);
-        }
-    }
+    histo.run_kernel();
     
-    HipErrorCheck(hipFree(d_PartialHistograms));
-    HipErrorCheck(hipFree(d_Data));
-    free(h_Data);
     return 0;
 }
